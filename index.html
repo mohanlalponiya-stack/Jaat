@@ -1,160 +1,91 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mohan Lal Real AI Studio</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        :root { --glow: #00f2fe; --rgb-grad: linear-gradient(45deg, red, yellow, lime, aqua, blue, magenta, red); }
-        body { background: #080808; color: white; font-family: 'Poppins', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        .header { width: 100%; padding: 15px; text-align: center; font-size: 22px; font-weight: 900; background: #111; border-bottom: 3px solid; border-image: var(--rgb-grad) 1; text-shadow: 0 0 10px var(--glow); }
-        .canvas-box { width: 90%; max-width: 400px; height: 500px; background: #000; margin-top: 20px; position: relative; border-radius: 15px; display: flex; justify-content: center; align-items: center; border: 3px solid #333; overflow: hidden; }
-        #mainImg { max-width: 100%; max-height: 100%; display: none; z-index: 1; }
-        #textOverlay { position: absolute; z-index: 5; color: #fff; font-size: 28px; cursor: move; text-shadow: 2px 2px 8px #000; }
-        .panel { width: 90%; max-width: 350px; padding: 20px; background: #151515; border-radius: 20px; margin-top: 20px; }
-        button { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .ai-btn { background: linear-gradient(90deg, #8e2de2, #4a00e0); }
-        .save-btn { background: #27ae60; }
-        #loading { display: none; color: var(--glow); font-weight: bold; margin: 10px; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-        input[type="file"], input[type="text"] { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; background: #222; color: white; border: 1px solid #444; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Holi AI Photo Generator</title>
+  <style>
+    body{background:#0b0b0b;color:#fff;font-family:system-ui;margin:0;padding:16px}
+    .card{max-width:420px;margin:auto;background:#141414;border-radius:14px;padding:16px}
+    h1{font-size:20px;margin:0 0 8px;text-align:center}
+    textarea{width:100%;min-height:110px;border-radius:10px;border:1px solid #333;background:#0f0f0f;color:#fff;padding:10px}
+    button{width:100%;margin-top:10px;padding:12px;border:0;border-radius:10px;font-weight:700;cursor:pointer}
+    .gen{background:linear-gradient(90deg,#ff6a00,#ee0979)}
+    .save{background:#27ae60}
+    .imgbox{margin-top:12px;background:#000;border-radius:12px;overflow:hidden;min-height:240px;display:flex;align-items:center;justify-content:center}
+    img{max-width:100%}
+    .note{opacity:.8;font-size:12px;margin-top:8px}
+  </style>
 </head>
 <body>
+  <div class="card">
+    <h1>🎨 Holi AI Photo Generator</h1>
 
-<div class="header">MOHAN LAL AI REAL EDITOR</div>
+    <textarea id="prompt">
+Indian boy celebrating Holi,
+natural smiling face,
+white kurta,
+colorful gulal flying in air,
+festival background,
+cinematic lighting,
+high quality
+    </textarea>
 
-<div class="canvas-box" id="captureArea">
-    <p id="hint" style="z-index: 2; color: #555;">फोटो यहाँ लोड करें</p>
-    <img id="mainImg">
-    <div id="textOverlay" style="display:none;">लिखना शुरू करें</div>
-</div>
+    <button class="gen" onclick="generate()">Generate Holi Photo</button>
 
-<div id="loading">AI प्रोसेसिंग चल रही है... कृपया रुकें</div>
+    <div class="imgbox" id="box">Image will appear here</div>
 
-<div class="panel">
-    <h3>1. फोटो चुनें</h3>
-    <input type="file" id="upImg" accept="image/*">
-    
-    <h3>2. AI फीचर्स</h3>
-    <button class="ai-btn" onclick="processAI('dress')">👗 कपड़े बदलें (Real AI)</button>
-    <button class="ai-btn" onclick="processAI('hair')">💇 बाल बदलें (Real AI)</button>
-    <button class="ai-btn" onclick="processAI('face')">✨ गाल/मेकअप ठीक करें</button>
-
-    <h3>3. SD Card फॉन्ट</h3>
-    <input type="file" id="upFont" accept=".ttf,.otf">
-
-    <h3>4. टेक्स्ट एडिट</h3>
-    <input type="text" id="txtInp" placeholder="अपना नाम लिखें...">
-    <button onclick="addTxt()" style="background:#333;">फोटो पर लिखें</button>
-
-    <button class="save-btn" onclick="saveImage()">⬇️ गैलरी में सेव करें</button>
-</div>
+    <button class="save" onclick="download()" disabled id="saveBtn">⬇️ Download</button>
+    <div class="note">FREE tier: नई image बनती है (existing photo edit नहीं)</div>
+  </div>
 
 <script>
-    // आपकी API कीज़ और सेटिंग्स
-    const MY_KEY = "cJu1XI3LEn1dB4BYtohqDHbbK_8"; 
-    const CLOUD_NAME = "demo"; // यहाँ अपना Cloudinary Cloud Name डालें
-    const UPLOAD_PRESET = "unsigned_preset"; // अपना Unsigned Preset डालें
+const API_KEY = "YOUR_GEMINI_API_KEY_HERE"; // <-- यहाँ अपनी NEW key डालो
 
-    const upImg = document.getElementById('upImg');
-    const mainImg = document.getElementById('mainImg');
-    const textOverlay = document.getElementById('textOverlay');
-    const loading = document.getElementById('loading');
+async function generate(){
+  const box = document.getElementById('box');
+  const saveBtn = document.getElementById('saveBtn');
+  box.innerHTML = "Generating… ⏳";
+  saveBtn.disabled = true;
 
-    // फोटो अपलोड करना
-    upImg.onchange = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            mainImg.src = ev.target.result;
-            mainImg.style.display = 'block';
-            document.getElementById('hint').style.display = 'none';
-        };
-        reader.readAsDataURL(file);
-    };
+  const prompt = document.getElementById('prompt').value;
 
-    // SD Card से फॉन्ट अपलोड करना
-    document.getElementById('upFont').onchange = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            const fontName = 'UserFont';
-            const f = new FontFace(fontName, ev.target.result);
-            try {
-                const loaded = await f.load();
-                document.fonts.add(loaded);
-                textOverlay.style.fontFamily = fontName;
-                alert("SD Card फॉन्ट सक्रिय हो गया!");
-            } catch (e) { alert("गलत फॉन्ट फाइल!"); }
-        };
-        reader.readAsArrayBuffer(file);
-    };
+  try{
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-image:generateContent?key="+API_KEY,
+      {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          contents:[{
+            parts:[{ text: prompt }]
+          }]
+        })
+      }
+    );
 
-    // असली AI प्रोसेसिंग (Cloudinary Generative Fill)
-    async function processAI(mode) {
-        if(!mainImg.src || !upImg.files[0]) return alert("पहले फोटो डालें!");
-        
-        loading.style.display = 'block';
-        
-        let aiEffect = "";
-        if(mode === 'dress') aiEffect = "e_gen_replace:from_clothes;to_suit";
-        if(mode === 'hair') aiEffect = "e_gen_replace:from_hair;to_trendy_haircut";
-        if(mode === 'face') aiEffect = "e_improve,e_skin_thinning:20";
+    const data = await res.json();
+    const b64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if(!b64) throw new Error("No image returned");
 
-        try {
-            // 1. फोटो अपलोड करें
-            const formData = new FormData();
-            formData.append('file', upImg.files[0]);
-            formData.append('upload_preset', UPLOAD_PRESET);
+    const img = document.createElement('img');
+    img.src = "data:image/png;base64,"+b64;
+    box.innerHTML = "";
+    box.appendChild(img);
+    saveBtn.disabled = false;
+  }catch(e){
+    box.innerHTML = "Error ❌ (Free limit hit या key issue)";
+  }
+}
 
-            const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            const uploadData = await uploadRes.json();
-            
-            if(uploadData.public_id) {
-                // 2. AI कमांड के साथ URL बनाएं
-                const publicId = uploadData.public_id;
-                const editedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${aiEffect}/${publicId}.jpg`;
-                
-                mainImg.src = editedUrl;
-                alert("AI " + mode + " प्रक्रिया पूरी हुई!");
-            } else {
-                alert("अपलोड में दिक्कत आई। कृपया अपनी Cloud Name सेटिंग्स चेक करें।");
-            }
-        } catch (error) {
-            console.error(error);
-            alert("सर्वर एरर!");
-        } finally {
-            loading.style.display = 'none';
-        }
-    }
-
-    function addTxt() {
-        const val = document.getElementById('txtInp').value;
-        if(val) { textOverlay.innerText = val; textOverlay.style.display = 'block'; }
-    }
-
-    function saveImage() {
-        html2canvas(document.getElementById('captureArea')).then(canvas => {
-            const link = document.createElement('a');
-            link.download = 'MohanLal_AI_Edit.png';
-            link.href = canvas.toDataURL();
-            link.click();
-        });
-    }
-
-    // टेक्स्ट मूव लॉजिक
-    let move = false;
-    textOverlay.onmousedown = () => move = true;
-    textOverlay.ontouchstart = () => move = true;
-    window.onmousemove = (e) => { if(move) { textOverlay.style.left = e.clientX - 50 + 'px'; textOverlay.style.top = e.clientY - 150 + 'px'; } };
-    window.ontouchmove = (e) => { if(move) { textOverlay.style.left = e.touches[0].clientX - 50 + 'px'; textOverlay.style.top = e.touches[0].clientY - 150 + 'px'; } };
-    window.onmouseup = () => move = false;
-    window.ontouchend = () => move = false;
+function download(){
+  const img = document.querySelector('#box img');
+  if(!img) return;
+  const a = document.createElement('a');
+  a.href = img.src;
+  a.download = "Holi_AI.png";
+  a.click();
+}
 </script>
 </body>
 </html>
