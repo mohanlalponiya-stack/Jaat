@@ -18,6 +18,7 @@
         .save-btn { background: #27ae60; }
         #loading { display: none; color: var(--glow); font-weight: bold; margin: 10px; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
+        input[type="file"], input[type="text"] { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; background: #222; color: white; border: 1px solid #444; }
     </style>
 </head>
 <body>
@@ -25,7 +26,7 @@
 <div class="header">MOHAN LAL AI REAL EDITOR</div>
 
 <div class="canvas-box" id="captureArea">
-    <p id="hint">फोटो यहाँ लोड करें</p>
+    <p id="hint" style="z-index: 2; color: #555;">फोटो यहाँ लोड करें</p>
     <img id="mainImg">
     <div id="textOverlay" style="display:none;">लिखना शुरू करें</div>
 </div>
@@ -33,65 +34,103 @@
 <div id="loading">AI प्रोसेसिंग चल रही है... कृपया रुकें</div>
 
 <div class="panel">
-    <input type="file" id="upImg" accept="image/*" style="margin-bottom: 10px;">
+    <h3>1. फोटो चुनें</h3>
+    <input type="file" id="upImg" accept="image/*">
     
+    <h3>2. AI फीचर्स</h3>
     <button class="ai-btn" onclick="processAI('dress')">👗 कपड़े बदलें (Real AI)</button>
     <button class="ai-btn" onclick="processAI('hair')">💇 बाल बदलें (Real AI)</button>
     <button class="ai-btn" onclick="processAI('face')">✨ गाल/मेकअप ठीक करें</button>
 
-    <h3 style="font-size: 14px; color: #555;">SD Card से फॉन्ट चुनें</h3>
+    <h3>3. SD Card फॉन्ट</h3>
     <input type="file" id="upFont" accept=".ttf,.otf">
 
-    <input type="text" id="txtInp" placeholder="अपना नाम लिखें..." style="width:100%; padding:10px; margin-top:10px; border-radius:5px; background:#222; color:white; border:1px solid #444;">
+    <h3>4. टेक्स्ट एडिट</h3>
+    <input type="text" id="txtInp" placeholder="अपना नाम लिखें...">
     <button onclick="addTxt()" style="background:#333;">फोटो पर लिखें</button>
 
     <button class="save-btn" onclick="saveImage()">⬇️ गैलरी में सेव करें</button>
 </div>
 
 <script>
-    const MY_KEY = "cJu1XI3LEn1dB4BYtohqDHbbK_8"; //
+    // आपकी API कीज़ और सेटिंग्स
+    const MY_KEY = "cJu1XI3LEn1dB4BYtohqDHbbK_8"; 
+    const CLOUD_NAME = "demo"; // यहाँ अपना Cloudinary Cloud Name डालें
+    const UPLOAD_PRESET = "unsigned_preset"; // अपना Unsigned Preset डालें
+
     const upImg = document.getElementById('upImg');
     const mainImg = document.getElementById('mainImg');
     const textOverlay = document.getElementById('textOverlay');
     const loading = document.getElementById('loading');
 
-    // फोटो अपलोड
+    // फोटो अपलोड करना
     upImg.onchange = (e) => {
+        const file = e.target.files[0];
         const reader = new FileReader();
         reader.onload = (ev) => {
             mainImg.src = ev.target.result;
             mainImg.style.display = 'block';
             document.getElementById('hint').style.display = 'none';
         };
-        reader.readAsDataURL(e.target.files[0]);
+        reader.readAsDataURL(file);
     };
 
-    // SD Card फॉन्ट लोड
+    // SD Card से फॉन्ट अपलोड करना
     document.getElementById('upFont').onchange = (e) => {
+        const file = e.target.files[0];
         const reader = new FileReader();
         reader.onload = async (ev) => {
-            const f = new FontFace('CustomFont', ev.target.result);
-            await f.load();
-            document.fonts.add(f);
-            textOverlay.style.fontFamily = 'CustomFont';
-            alert("SD Card फॉन्ट सक्रिय हो गया!");
+            const fontName = 'UserFont';
+            const f = new FontFace(fontName, ev.target.result);
+            try {
+                const loaded = await f.load();
+                document.fonts.add(loaded);
+                textOverlay.style.fontFamily = fontName;
+                alert("SD Card फॉन्ट सक्रिय हो गया!");
+            } catch (e) { alert("गलत फॉन्ट फाइल!"); }
         };
-        reader.readAsArrayBuffer(e.target.files[0]);
+        reader.readAsArrayBuffer(file);
     };
 
-    // असली AI प्रोसेसिंग फंक्शन
+    // असली AI प्रोसेसिंग (Cloudinary Generative Fill)
     async function processAI(mode) {
-        if(!mainImg.src) return alert("पहले फोटो डालें!");
+        if(!mainImg.src || !upImg.files[0]) return alert("पहले फोटो डालें!");
         
         loading.style.display = 'block';
         
-        // यह आपकी Key का उपयोग करके AI सर्वर को रिक्वेस्ट भेजता है
-        // यहाँ हम एक काल्पनिक Fetch Call दिखा रहे हैं जो आपकी Key के साथ असली AI को ट्रिगर करेगा
-        setTimeout(() => {
+        let aiEffect = "";
+        if(mode === 'dress') aiEffect = "e_gen_replace:from_clothes;to_suit";
+        if(mode === 'hair') aiEffect = "e_gen_replace:from_hair;to_trendy_haircut";
+        if(mode === 'face') aiEffect = "e_improve,e_skin_thinning:20";
+
+        try {
+            // 1. फोटो अपलोड करें
+            const formData = new FormData();
+            formData.append('file', upImg.files[0]);
+            formData.append('upload_preset', UPLOAD_PRESET);
+
+            const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const uploadData = await uploadRes.json();
+            
+            if(uploadData.public_id) {
+                // 2. AI कमांड के साथ URL बनाएं
+                const publicId = uploadData.public_id;
+                const editedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${aiEffect}/${publicId}.jpg`;
+                
+                mainImg.src = editedUrl;
+                alert("AI " + mode + " प्रक्रिया पूरी हुई!");
+            } else {
+                alert("अपलोड में दिक्कत आई। कृपया अपनी Cloud Name सेटिंग्स चेक करें।");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("सर्वर एरर!");
+        } finally {
             loading.style.display = 'none';
-            alert("AI " + mode + " पूरा हुआ! (नोट: असली इमेज रेंडरिंग के लिए 'Fotor' या 'Cloudinary' का एंडपॉइंट URL यहाँ जोड़ना होगा)");
-            // असली रिजल्ट आने पर: mainImg.src = resultURL;
-        }, 3000);
+        }
     }
 
     function addTxt() {
@@ -102,18 +141,20 @@
     function saveImage() {
         html2canvas(document.getElementById('captureArea')).then(canvas => {
             const link = document.createElement('a');
-            link.download = 'MohanLal_AI.png';
+            link.download = 'MohanLal_AI_Edit.png';
             link.href = canvas.toDataURL();
             link.click();
         });
     }
 
-    // टेक्स्ट मूव
+    // टेक्स्ट मूव लॉजिक
     let move = false;
     textOverlay.onmousedown = () => move = true;
+    textOverlay.ontouchstart = () => move = true;
     window.onmousemove = (e) => { if(move) { textOverlay.style.left = e.clientX - 50 + 'px'; textOverlay.style.top = e.clientY - 150 + 'px'; } };
+    window.ontouchmove = (e) => { if(move) { textOverlay.style.left = e.touches[0].clientX - 50 + 'px'; textOverlay.style.top = e.touches[0].clientY - 150 + 'px'; } };
     window.onmouseup = () => move = false;
+    window.ontouchend = () => move = false;
 </script>
-
 </body>
 </html>
